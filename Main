@@ -1,0 +1,209 @@
+using namespace std;
+#include <iostream>
+#include <vector>
+#include <string>
+
+class User
+{
+	//основные поля, с которыми мы будем работать
+	string name;
+	string login;
+	string password;
+	vector<string>messages;//сообщений в чате может вводиться много, поэтому для них нужен динамический массив
+
+public:
+	//конструктор
+	User(const string& name, const string& login, const string& password) : name(name), login(login), password(password)
+	{
+
+	}
+	//геттер приватного поля - имени
+	const string& getName() const
+	{
+		return name;
+	}
+	//геттер приватного поля - логина
+	const string& getLogin() const
+	{
+		return login;
+	}
+	//функция проверки пароля
+	bool checkPassword(const string& inputPassword) const
+	{
+		return password == inputPassword;
+	}
+	//функция отправки сообщения
+	void addMessage(const string& message)
+	{
+		messages.push_back(message);
+	}
+	//геттер сообщений из массива
+	const vector<string>& getMessages() const
+	{
+		return messages;
+	}
+};
+
+class Chat
+{
+public:
+	//динамический массив из пользователей чата
+	vector<User> users;
+	//функция регистрации пользователя
+	//функцией push_back добавляем элементы в динамический массив
+	void registerUser(const string& name, const string& login, const string& password)
+	{
+		users.push_back(User(name, login, password));
+		cout << "Пользователь " << name << " успешно зарегистрирован" << endl;
+	}
+	//функция входа зарегистрированного пользователя
+	//создаем объект класса User
+	//внутри цикла проверяем условия, что введенное имя логина равно геттеру логина и пароль введен правильно
+	User* login(const string& login, const string& password)
+	{
+		for(User& user : users)
+		{
+			if (user.getLogin() == login && user.checkPassword(password))
+			{
+				cout << "Вход выполнен как " << user.getName() << endl;
+				return &user;//работаем уже с этим пользователем, а не обнуляемся
+			}
+		}
+		cout << "Неверный логин или пароль." << endl;
+		return nullptr;
+	}
+	//функция отправки сообщениия от пользователя к другому
+	void sendMessage(User& sender, User& receiver, const string& message)
+	{
+		receiver.addMessage("Личное от " + sender.getName() + ": " + message);
+	}
+
+	void sendToChat(User& sender, const string& message)
+	{
+		for (User& user : users)
+		{
+			if (&user != &sender)
+			{
+				user.addMessage("Общий чат: " + message);
+			}
+		}
+	}
+};
+
+int main()
+{
+	setlocale(LC_ALL, "");
+
+	Chat chat;//объект класса
+	//начало работы программы - вывод меню
+	while (true)
+	{
+		cout << "1. Регистрация нового пользователя" << endl;
+		cout << "2. Вход" << endl;
+		cout << "3. Отправить личное сообщение" << endl;
+		cout << "4. Отправить сообщение в общий чат" << endl;
+		cout << "5. Выход" << endl;
+		
+		int choice;
+		cin >> choice;
+		//регистрация пользователя
+		if (choice == 1)
+		{
+			string name, login, password;
+			//принимаем аргументы для функции регистрации
+			cout << "Введите имя: ";
+			cin >> name;
+			cout << "Введите логин: ";
+			cin >> login;
+			cout << "Введите пароль: ";
+			cin >> password;
+			//вызов функции регистрации, описанной в классе Chat
+			chat.registerUser(name, login, password);
+		}
+		//тут пользователь может залогиниться
+		else if (choice == 2)
+		{
+			string login, password;
+			//принимаем аргументы для функции входа
+			cout << "Введите логин: ";
+			cin >> login;
+			cout << "Введите пароль: ";
+			cin >> password;
+			//создаем объект класса User - зарегистрированный пользователь
+			//если данные приняты, срабатывает меню пользователя
+			User* currentUser = chat.login(login, password);
+			if (currentUser)
+			{
+				while (true)
+				{
+					cout << "1. Отправить личное сообщение" << endl;
+					cout << "2. Отправить сообщение в общий чат" << endl;
+					cout << "3. Читать сообщения" << endl;
+					cout << "4. Выход" << endl;
+
+					int subChoice;
+					cin >> subChoice;
+					//отправляем сообщение другому пользователю
+					if (subChoice == 1)
+					{
+						//нужны две строковые переменные - имя получателя и само сообщение
+						string receiverName, message;
+
+						cout << "Введите имя получателя: ";
+						cin >> receiverName;
+						//освобождаем место в динамической памяти
+						User* receiver = nullptr;
+						for (User& user : chat.users)
+						{
+							//смотрим, что введенное имя есть среди зарегистрированных
+							if (user.getName() == receiverName)
+							{
+								receiver = &user;
+								break;
+							}
+						}
+						if (receiver)
+						{
+							cout << "Введите сообщение: ";
+							cin.ignore();//убираем '\n' из потока
+							getline(cin, message);//чтение строки
+							chat.sendMessage(*currentUser, *receiver, message);
+						}
+						else
+						{
+							cout << "Потльзователь с таким именем не найден" << endl;
+						}
+					}
+					//отправляем сообщение в общий ат
+					else if (subChoice == 2)
+					{
+						string message;
+
+						cout << "Введите сообщение: ";
+						cin.ignore();
+						getline(cin, message);
+						chat.sendToChat(*currentUser, message);
+					}
+					//получение сообщений
+					else if (subChoice == 3)
+					{
+						cout << "Сообщение: " << endl;
+						for (const string& userMessage : currentUser->getMessages())
+						{
+							cout << userMessage << endl;
+						}
+					}
+					else if (subChoice == 4)
+					{
+						break;
+					}
+				}
+			}
+		}
+		else if (choice == 5)
+		{
+			break;
+		}
+	}
+	return 0;
+}
